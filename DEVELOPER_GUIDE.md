@@ -329,6 +329,123 @@ docker-compose build
 docker-compose up -d
 ```
 
+## Common Git and GitHub Issues
+
+When working with this repository, you may encounter several Git and GitHub issues. Here are solutions to the most common problems:
+
+### Branch Naming Issues
+
+**Problem:** Git error "src refspec main does not match any" when trying to push.
+
+**Cause:** This happens when you try to push to a branch (like `main`) that doesn't exist locally. The repository may be using `master` as the default branch name.
+
+**Solution:**
+
+1. Check your current branch:
+   ```bash
+   git branch
+   ```
+
+2. Either push to the correct branch name:
+   ```bash
+   # If your local branch is 'master'
+   git push -u origin master
+   ```
+
+3. Or rename your branch to match the expected name:
+   ```bash
+   # Rename from 'master' to 'main'
+   git branch -m master main
+   git push -u origin main
+   ```
+
+### Large File Issues
+
+**Problem:** HTTP 400 errors or "remote: error: File X is Y MB; this exceeds GitHub's file size limit of 100 MB" when pushing.
+
+**Cause:** GitHub has a hard limit of 100MB per file and will reject pushes containing larger files.
+
+**Solution:**
+
+1. Identify large files:
+   ```bash
+   find . -type f -size +50M
+   ```
+
+2. Add these files to your `.gitignore`:
+   ```bash
+   echo "path/to/large/file" >> .gitignore
+   ```
+
+3. Remove them from Git tracking (if they're already tracked):
+   ```bash
+   git rm --cached path/to/large/file
+   ```
+
+4. Commit the change:
+   ```bash
+   git commit -m "Remove large files from tracking"
+   ```
+
+### Virtual Environment Issues
+
+**Problem:** Repository size becomes too large when `.venv` directory is included.
+
+**Cause:** Virtual environments contain compiled binaries and numerous dependencies that shouldn't be in Git.
+
+**Solution:**
+
+1. Always include `.venv/` in your `.gitignore`:
+   ```bash
+   echo ".venv/" >> .gitignore
+   ```
+
+2. If already committed, remove it from tracking:
+   ```bash
+   git rm -r --cached .venv/
+   git commit -m "Remove virtual environment from Git tracking"
+   ```
+
+### HTTPS vs SSH Authentication
+
+If you encounter authentication issues when pushing to GitHub:
+
+```bash
+# Change to SSH authentication (more reliable than HTTPS)
+git remote set-url origin git@github.com:username/repository.git
+
+# Verify the change
+git remote -v
+```
+
+### Important Files to Exclude from Git
+
+For Zenodo RDM specifically, these files/directories should never be committed:
+
+```
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Generated files
+__pycache__/
+*.pyc
+node_modules/
+
+# User data
+data/
+instance/
+
+# Generated assets
+static/
+app_data/static/
+app_data/images/
+app_data/files/
+```
+
+Ensure your `.gitignore` file contains these entries to prevent repository bloat and GitHub errors.
+
 ## Understanding the Dependency Stack
 
 Zenodo RDM has a complex dependency stack:
