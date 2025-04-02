@@ -48,26 +48,12 @@ invenio-cli install
 # Set up services
 invenio-cli services setup
 
+# Set admin password
+# This sets the password for the default admin account (admin@zenodo.org)
+source .venv/bin/activate && invenio shell -c "from invenio_accounts.models import User; from flask_security.utils import hash_password; u = User.query.filter_by(email='admin@zenodo.org').first(); u.password = hash_password('password123'); from invenio_db import db; db.session.commit(); print('Password updated successfully')"
+
 # Run the application
 invenio-cli run
-```
-
-#### Option B: Using Docker Compose
-
-This option is simpler but gives you less control:
-
-```bash
-# First, create necessary directories
-mkdir -p data/images
-
-# Start the services
-docker-compose up -d
-```
-
-For a full deployment with web UI, API, and worker:
-
-```bash
-docker-compose -f docker-compose.full.yml up -d
 ```
 
 ### 4. Access the Application
@@ -79,74 +65,17 @@ After successful installation, you can access:
 - RabbitMQ Management: http://localhost:15672 (username: guest, password: guest)
 - pgAdmin: http://localhost:5050 (username: info@zenodo.org, password: zenodo)
 
-## Detailed Configuration
+### 5. Login with Admin Account
 
-### Using local.cfg for Local Development
+After setting the admin password in the installation step, you can log in to the web UI with:
+- Email: admin@zenodo.org
+- Password: password123 (or whatever password you set)
 
-The repository includes a `local.cfg` file which provides sensible defaults for local development. You can modify this file to adjust configuration:
+There are also two other default accounts created during installation:
+- eu@zenodo.org
+- user@demo.org
 
-```python
-# Site configuration
-SITE_UI_URL = "http://127.0.0.1:5000"
-SITE_API_URL = "http://127.0.0.1:5000/api"
-
-# Database configuration
-SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://zenodo:zenodo@localhost:5432/zenodo"
-
-# Redis configuration
-INVENIO_ACCOUNTS_SESSION_REDIS_URL = "redis://localhost:6379/1"
-INVENIO_CACHE_REDIS_URL = "redis://localhost:6379/0"
-INVENIO_RATELIMIT_STORAGE_URL = "redis://localhost:6379/3"
-
-# Message queue
-INVENIO_BROKER_URL = "amqp://guest:guest@localhost:5672/"
-INVENIO_CELERY_BROKER_URL = "amqp://guest:guest@localhost:5672/"
-INVENIO_CELERY_RESULT_BACKEND = "redis://localhost:6379/2"
-
-# Search
-INVENIO_SEARCH_HOSTS = ["localhost:9200"]
+You can check all available user accounts with:
+```bash
+source .venv/bin/activate && invenio shell -c "from invenio_accounts.models import User; print('\n'.join([f'ID: {u.id}, Email: {u.email}, Active: {u.active}' for u in User.query.all()]))"
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Port conflicts**: If you encounter errors about ports already in use, either:
-   - Stop conflicting services on your machine
-   - Modify the port mappings in `docker-compose.yml`
-
-2. **Permission issues with Docker volumes**:
-   ```bash
-   mkdir -p data/images && chmod -R 777 data
-   ```
-
-3. **Dependencies issues**: If you encounter missing dependencies, add them to the Pipfile:
-   ```bash
-   pipenv install <package-name>
-   pipenv lock
-   ```
-
-4. **Database connection issues**: Ensure PostgreSQL is running and accessible:
-   ```bash
-   docker-compose exec db psql -U zenodo -d zenodo
-   ```
-
-5. **Logs viewing**: Check logs for specific services:
-   ```bash
-   docker-compose logs -f <service-name>
-   ```
-
-## Key Differences from CERN Deployment
-
-This repository has been modified from the original CERN Zenodo repository to make it more suitable for local development:
-
-1. **Docker Images**: Using standard Docker Hub images instead of CERN-specific registry images
-2. **Authentication**: Simplified authentication and removed CERN-specific OAuth
-3. **Security Settings**: Disabled HTTPS requirements for local development
-4. **Dependencies**: Added missing dependencies like `greenlet` for SQLAlchemy
-5. **Configuration**: Added local-focused configuration defaults
-
-## References
-
-- [InvenioRDM Documentation](https://inveniordm.docs.cern.ch/install/)
-- [Original Zenodo Repository](https://github.com/zenodo/zenodo-rdm) 

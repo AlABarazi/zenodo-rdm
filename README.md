@@ -121,6 +121,16 @@ invenio-cli services setup
 invenio-cli run
 ```
 
+### Setting Admin Password
+
+After installation, you need to set the admin password:
+
+```
+source .venv/bin/activate && invenio shell -c "from invenio_accounts.models import User; from flask_security.utils import hash_password; u = User.query.filter_by(email='admin@zenodo.org').first(); u.password = hash_password('password123'); from invenio_db import db; db.session.commit(); print('Password updated successfully')"
+```
+
+This sets the password for the admin user (admin@zenodo.org) to 'password123'. You can modify the password as needed.
+
 See the [InvenioRDM Documentation](https://inveniordm.docs.cern.ch/install/)
 for further installation options.
 
