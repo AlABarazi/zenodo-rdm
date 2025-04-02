@@ -1,0 +1,60 @@
+services:
+  cache:
+    extends:
+      file: docker-services.yml
+      service: cache
+    ports:
+      - "6379:6379"
+  db:
+    extends:
+      file: docker-services.yml
+      service: db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  pgbouncer:
+    extends:
+      file: docker-services.yml
+      service: pgbouncer
+    ports:
+      - "6432:6432"
+  mq:
+    extends:
+      file: docker-services.yml
+      service: mq
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+  search:
+    extends:
+      file: docker-services.yml
+      service: search
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+  opensearch-dashboards:
+    extends:
+      file: docker-services.yml
+      service: opensearch-dashboards
+    ports:
+      - "5601:5601"
+  pgadmin:
+    extends:
+      file: docker-services.yml
+      service: pgadmin
+    ports:
+      - "5050:80"
+      - "5051:443"
+  iipserver:
+    extends:
+      file: docker-services.yml
+      service: iipserver
+    volumes:
+      - ${INSTANCE_PATH:-./data}/images:/images # Default path if INSTANCE_PATH not defined
+    ports:
+      - "8080:80"
+      - "9000:9000"
+
+volumes:
+  postgres_data:

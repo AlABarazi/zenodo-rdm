@@ -1,0 +1,125 @@
+services:
+  cache:
+    extends:
+      file: docker-services.yml
+      service: cache
+  db:
+    extends:
+      file: docker-services.yml
+      service: db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  mq:
+    extends:
+      file: docker-services.yml
+      service: mq
+  search:
+    extends:
+      file: docker-services.yml
+      service: search
+  pgadmin:
+    extends:
+      file: docker-services.yml
+      service: pgadmin
+  opensearch-dashboards:
+    extends:
+      file: docker-services.yml
+      service: opensearch-dashboards
+  # Frontend
+  frontend:
+    extends:
+      file: docker-services.yml
+      service: frontend
+    volumes:
+      - static_data:/opt/invenio/var/instance/static
+    depends_on:
+      - web-ui
+      - web-api
+      - iipserver
+    ports:
+      - "80:80"
+      - "443:443"
+  # UI Application
+  web-ui:
+    extends:
+      file: docker-services.yml
+      service: app
+    entrypoint: ["bash", "-c"]
+    command: ["uwsgi /opt/invenio/var/instance/uwsgi_ui.ini"]
+    environment:
+      # Disable IIIF Proxy, since nginx/frontend handles it
+      - "INVENIO_IIIF_PROXY_CLASS=None"
+      - "INVENIO_SITE_UI_URL=http://127.0.0.1" # Changed to http for local development
+      - "INVENIO_SITE_API_URL=http://127.0.0.1/api" # Changed to http for local development
+    image: zenodo:latest
+    ports:
+      - "5000:5000"  # Exposed on host port 5000
+    volumes:
+      - static_data:/opt/invenio/var/instance/static
+      - uploaded_data:/opt/invenio/var/instance/data
+      - archived_data:/opt/invenio/var/instance/archive
+      - ./invenio.cfg:/opt/invenio/var/instance/invenio.cfg # Mount local config for easy editing
+    depends_on:
+      - search
+      - cache
+      - db
+      - mq
+  # API Rest Application
+  web-api:
+    extends:
+      file: docker-services.yml
+      service: app
+    entrypoint: ["bash", "-c"]
+    command: ["uwsgi /opt/invenio/var/instance/uwsgi_rest.ini"]
+    environment:
+      # Disable IIIF Proxy, since nginx/frontend handles it
+      - "INVENIO_IIIF_PROXY_CLASS=None"
+      - "INVENIO_SITE_UI_URL=http://127.0.0.1" # Changed to http for local development
+      - "INVENIO_SITE_API_URL=http://127.0.0.1/api" # Changed to http for local development
+    image: zenodo:latest
+    ports:
+      - "5001:5000"  # Exposed on host port 5001
+    volumes:
+      - uploaded_data:/opt/invenio/var/instance/data
+      - archived_data:/opt/invenio/var/instance/archive
+      - ./invenio.cfg:/opt/invenio/var/instance/invenio.cfg # Mount local config for easy editing
+    depends_on:
+      - search
+      - cache
+      - db
+      - mq
+  iipserver:
+    extends:
+      file: docker-services.yml
+      service: iipserver
+    volumes:
+      - image_tiles:/images
+    ports:
+      - "8080:80"
+      - "9000:9000"
+
+  # Worker
+  worker:
+    extends:
+      file: docker-services.yml
+      service: app
+    restart: "unless-stopped"
+    entrypoint: ["bash", "-c"]
+    command: ["celery -A invenio_app.celery worker --beat --events --loglevel=INFO"]
+    image: zenodo:latest
+    volumes:
+      - uploaded_data:/opt/invenio/var/instance/data
+      - archived_data:/opt/invenio/var/instance/archive
+      - image_tiles:/opt/invenio/var/instance/images
+      - ./invenio.cfg:/opt/invenio/var/instance/invenio.cfg # Mount local config for easy editing
+    depends_on:
+      - search
+      - cache
+      - db
+      - mq
+volumes:
+  static_data:
+  uploaded_data:
+  archived_data:
+  image_tiles:
+  postgres_data:
