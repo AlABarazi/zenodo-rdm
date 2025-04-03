@@ -1,0 +1,78 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@type": "sc:Manifest",
+  "@id": "https://127.0.0.1:5000/api/iiif/record:216/manifest",
+  "label": "PDF Document",
+  "metadata": [
+    {
+      "label": "Publication Date",
+      "value": "2025-04-03"
+    }
+  ],
+  "description": "Manifest generated for PDF document",
+  "sequences": [
+    {
+      "@id": "https://127.0.0.1:5000/api/iiif/record:216/sequence/default",
+      "@type": "sc:Sequence",
+      "label": "Current Page Order",
+      "viewingDirection": "left-to-right",
+      "viewingHint": "individuals",
+      "canvases": [
+        {
+          "@id": "https://127.0.0.1:5000/api/iiif/record:216/canvas/history00871.pdf.ptif",
+          "@type": "sc:Canvas",
+          "label": "Page from history00871.pdf.ptif",
+          "width": 1911,
+          "height": 2760,
+          "images": [
+            {
+              "@id": "https://127.0.0.1:5000/api/iiif/record:216/canvas/history00871.pdf.ptif/image",
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://127.0.0.1:5000/api/iiif/21/6_/_/history00871.pdf.ptif/full/full/0/default.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 1911,
+                "height": 2760,
+                "service": {
+                  "@id": "https://127.0.0.1:5000/api/iiif/21/6_/_/history00871.pdf.ptif",
+                  "@context": "http://iiif.io/api/image/2/context.json",
+                  "profile": "http://iiif.io/api/image/2/level1.json"
+                }
+              },
+              "on": "https://127.0.0.1:5000/api/iiif/record:216/canvas/history00871.pdf.ptif"
+            }
+          ]
+        },
+        {
+          "@id": "https://127.0.0.1:5000/api/iiif/record:216/canvas/history00871.pdf.ptif",
+          "@type": "sc:Canvas",
+          "label": "Page from history00871.pdf.ptif",
+          "width": 1911,
+          "height": 2760,
+          "images": [
+            {
+              "@id": "https://127.0.0.1:5000/api/iiif/record:216/canvas/history00871.pdf.ptif/image",
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://127.0.0.1:5000/api/iiif/20/6_/_/history00871.pdf.ptif/full/full/0/default.jpg",
+                "@type": "dctypes:Image",
+                "format": "image/jpeg",
+                "width": 1911,
+                "height": 2760,
+                "service": {
+                  "@id": "https://127.0.0.1:5000/api/iiif/20/6_/_/history00871.pdf.ptif",
+                  "@context": "http://iiif.io/api/image/2/context.json",
+                  "profile": "http://iiif.io/api/image/2/level1.json"
+                }
+              },
+              "on": "https://127.0.0.1:5000/api/iiif/record:216/canvas/history00871.pdf.ptif"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

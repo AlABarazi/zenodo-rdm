@@ -18,7 +18,6 @@ def is_pdf_previewable(file):
     """Check if the file is a PDF that should be previewed."""
     return (
         file.has_extensions(".pdf")
-        and file.data.get("metadata", {}).get("previewer", "") == "image_previewer"
         and bool(file.record._record.media_files.entries)
     )
 
@@ -30,7 +29,7 @@ def can_preview(file):
     :returns: Boolean.
     """
     # supported_extensions list for image formats
-    preview_extensions = current_app.config["IIIF_FORMATS"]
+    preview_extensions = current_app.config.get("IIIF_FORMATS", {})
     supported_extensions = ["." + ext for ext in preview_extensions if ext != "pdf"]
 
     if is_pdf_previewable(file):
@@ -46,7 +45,7 @@ def preview(file):
     """Render template."""
     record = file.record._record
     tpl_ctx = {}
-    iiif_config = current_app.config["IIIF_TILES_CONVERTER_PARAMS"]
+    iiif_config = current_app.config.get("IIIF_TILES_CONVERTER_PARAMS", {})
 
     # Check the status of the tile generation for the image
     tile_status = None
@@ -56,18 +55,18 @@ def preview(file):
             tile_status = tile_file.processor.get("status")
 
     if not file.has_extensions(".pdf"):
-        # Check if the file was updated more than an hour ago
+        # Check if the file was updated more than the threshold time ago
         last_updated_time = datetime.fromisoformat(file.data["updated"])
         current_time = datetime.now(timezone.utc)
         time_diff = current_time - last_updated_time
         threshold_time = timedelta(
-            **current_app.config["PREVIEWER_IMAGE_FAILED_PROCESSING_TIMEDELTA"]
+            **current_app.config.get("PREVIEWER_IMAGE_FAILED_PROCESSING_TIMEDELTA", {"minutes": 10})
         )
 
-        # If the image tile status size is processing and the image was last updated more than an hour ago
+        # If the image tile status size is processing and the image was last updated more than the threshold time
         if tile_status == "processing" and time_diff > threshold_time:
             # The image size is less than configured size, fall back to IIIF
-            if file.size < current_app.config["PREVIEWER_MAX_IMAGE_SIZE_BYTES"]:
+            if file.size < current_app.config.get("PREVIEWER_MAX_IMAGE_SIZE_BYTES", 52428800):
                 return render_template(
                     "invenio_app_rdm/records/previewers/simple_image_preview.html",
                     css_bundles=["image-previewer.css"],
@@ -75,12 +74,12 @@ def preview(file):
                 )
             # The image size is greater than configured size,
             # image cannot be previewed
-            elif file.size > current_app.config["PREVIEWER_MAX_IMAGE_SIZE_BYTES"]:
+            elif file.size > current_app.config.get("PREVIEWER_MAX_IMAGE_SIZE_BYTES", 52428800):
                 return render_template(
                     "invenio_app_rdm/records/previewers/preview_unavailable.html",
-                    css_bundles=current_app.config[
-                        "PREVIEWER_BASE_CSS_BUNDLES"
-                    ]  # Basic bundle which includes Font-Awesome/Bootstrap
+                    css_bundles=current_app.config.get(
+                        "PREVIEWER_BASE_CSS_BUNDLES", []
+                    )  # Basic bundle which includes Font-Awesome/Bootstrap
                     + ["image-previewer.css"],
                     file=file,
                 )
@@ -93,8 +92,8 @@ def preview(file):
             if (
                 not metadata
                 or not (width and height)
-                or width <= iiif_config["tile_width"]
-                or height <= iiif_config["tile_height"]
+                or width <= iiif_config.get("tile_width", 512)
+                or height <= iiif_config.get("tile_height", 512)
             ):
                 return render_template(
                     "invenio_app_rdm/records/previewers/simple_image_preview.html",
@@ -103,7 +102,7 @@ def preview(file):
                 )
 
     supported_mirador_extensions = [
-        "." + ext for ext in current_app.config["MIRADOR_PREVIEW_EXTENSIONS"]
+        "." + ext for ext in current_app.config.get("MIRADOR_PREVIEW_EXTENSIONS", ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'tif', 'tiff'])
     ]
     show_mirador = tile_status == "finished" and file.has_extensions(
         *supported_mirador_extensions
@@ -115,7 +114,7 @@ def preview(file):
         if not is_pdf_previewable(file):
             tpl_ctx["iiif_canvas_url"] = file.data["links"]["iiif_canvas"]
         tpl_ctx["iiif_manifest_url"] = file.record["links"]["self_iiif_manifest"]
-        tpl_ctx["mirador_cfg"] = deepcopy(current_app.config["MIRADOR_PREVIEW_CONFIG"])
+        tpl_ctx["mirador_cfg"] = deepcopy(current_app.config.get("MIRADOR_PREVIEW_CONFIG", {}))
 
         # Generate dictionary of annotation files
         annotations = {}
@@ -144,16 +143,15 @@ def preview(file):
         tpl_ctx["mirador_cfg"]["window"]["sideBarPanel"] = (
             "annotations" if annotations else "info"
         )
-
     else:
         # Fallback to simple IIIF image preview
         ext = splitext(file.filename)[1].lower()[1:]
         format = (
             ext
-            if ext in current_app.config["IIIF_SIMPLE_PREVIEWER_NATIVE_EXTENSIONS"]
+            if ext in current_app.config.get("IIIF_SIMPLE_PREVIEWER_NATIVE_EXTENSIONS", ['jpg', 'jpeg', 'png'])
             else "jpg"
         )
-        size = current_app.config["IIIF_SIMPLE_PREVIEWER_SIZE"]
+        size = current_app.config.get("IIIF_SIMPLE_PREVIEWER_SIZE", "1000,")
         tpl_ctx["iiif_simple_url"] = (
             f"{file.data['links']['iiif_base']}/full/{size}/0/default.{format}"
         )

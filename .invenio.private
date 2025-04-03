@@ -1,4 +1,4 @@
 [cli]
-services_setup = False
+services_setup = True
 instance_path = /Users/alaaalbarazi/Projects/Turath/Coding/zenodo-rdm-master/.venv/var/instance
 
