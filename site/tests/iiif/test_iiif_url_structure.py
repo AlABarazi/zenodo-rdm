@@ -72,4 +72,16 @@ def test_url_structure():
     rotation_response = requests.get(rotation_url)
     assert rotation_response.status_code == 200, f"Rotation request failed with status {rotation_response.status_code}"
     
-    print(f"Successfully validated IIIF URL structure for record {RECORD_ID}") 
+    print(f"Successfully validated IIIF URL structure for record {RECORD_ID}")
+
+# Run the test when script is executed directly
+if __name__ == "__main__":
+    print(f"Testing IIIF URL structure for record ID: {RECORD_ID}")
+    print(f"Using base URL: {BASE_URL}")
+    try:
+        test_url_structure()
+        print("✅ All tests passed!")
+    except AssertionError as e:
+        print(f"❌ Test failed: {e}")
+    except Exception as e:
+        print(f"❌ Error during test: {e}") 

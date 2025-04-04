@@ -60,4 +60,16 @@ def test_iipserver_integration():
     bad_region_response = requests.get(bad_region_url)
     assert bad_region_response.status_code != 200, f"Invalid region request should fail but returned {bad_region_response.status_code}"
     
-    print(f"Successfully validated IIPServer integration for record {RECORD_ID}") 
+    print(f"Successfully validated IIPServer integration for record {RECORD_ID}")
+
+# Run the test when script is executed directly
+if __name__ == "__main__":
+    print(f"Testing IIIF IIPServer integration for record ID: {RECORD_ID}")
+    print(f"Using base URL: {BASE_URL}")
+    try:
+        test_iipserver_integration()
+        print("✅ All tests passed!")
+    except AssertionError as e:
+        print(f"❌ Test failed: {e}")
+    except Exception as e:
+        print(f"❌ Error during test: {e}") 

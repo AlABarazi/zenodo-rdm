@@ -15,6 +15,7 @@ This document provides a comprehensive testing guide for the IIIF manifest gener
 4. [Integration Testing](#integration-testing)
 5. [Performance Testing](#performance-testing)
 6. [Test Execution Guidelines](#test-execution-guidelines)
+7. [Testing Findings](#testing-findings)
 
 ## Introduction
 
@@ -38,6 +39,8 @@ Before running these tests, ensure you have:
 ```bash
 pip install pytest requests Pillow jsonschema
 ```
+
+4. Authentication credentials if testing with protected resources
 
 ## Test Scripts
 
@@ -618,4 +621,49 @@ pytest -v tests/iiif/test_iiif_manifest_basic.py
 xvfb-run pytest -v tests/iiif/
 ```
 
-These tests should be integrated into your continuous integration process to ensure that IIIF functionality remains working as the codebase evolves. 
+These tests should be integrated into your continuous integration process to ensure that IIIF functionality remains working as the codebase evolves.
+
+## Testing Findings
+
+During testing, we identified several important aspects of the IIIF manifest generation system that should be considered:
+
+### Authentication Requirements
+
+Most IIIF endpoints in Zenodo-RDM require authentication:
+
+- The `/api/iiif/record:{id}/manifest` endpoint returns a 403 Forbidden response without proper authentication
+- To test with authentication, you need to:
+  - Log in to the web interface and obtain a token
+  - Or create an API token in your user profile
+  - Pass the token using the `Authorization: Bearer {token}` header
+
+### IIPServer Configuration
+
+The IIPServer component has specific requirements:
+
+- It expects PTIF (Pyramid TIFF) files, not regular image files
+- Files should be located in specific directories based on the record ID
+- The URL pattern for direct IIPServer access is different from the API endpoints
+- Error responses from IIPServer may not be in JSON format
+
+### Testing in a Full Stack Environment
+
+For comprehensive testing, a full stack environment is recommended:
+
+- Use `docker-compose -f docker-compose.full.yml up -d` to start all services
+- This includes the web-ui, web-api, and worker components needed for the complete workflow
+- Use real records with properly converted PTIF files for testing
+
+### Common Issues
+
+Common issues encountered during testing:
+
+1. **Authentication errors** (403 Forbidden) - Make sure to include a valid authentication token
+2. **File not found errors** - Ensure PTIF files are properly generated and in the expected location
+3. **Invalid format errors** - Confirm that images have been properly converted to PTIF format
+4. **IIPServer errors** - Check IIPServer logs for detailed error messages
+
+When executing the tests, be prepared to:
+- Modify test scripts based on your specific environment
+- Provide real record IDs with properly processed images
+- Include authentication credentials where needed 

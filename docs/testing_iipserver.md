@@ -387,3 +387,39 @@ During our testing process, we learned several important lessons:
 Testing the IIPServer component is an essential step in ensuring the proper functioning of the Mirador IIIF image previewer system. By following this guide, you should be able to validate that your IIPServer is correctly configured and can serve IIIF-compliant image requests.
 
 Remember that for a complete test of the image viewing functionality, you'll need the full application stack with proper image processing to create valid PTIF files. However, the isolated IIPServer testing described in this guide is valuable for troubleshooting specific issues with the image serving component. 
+
+
+Yes, I'm here! Let me continue investigating the IIIF manifest generation in the Zenodo-RDM codebase.
+
+```bash
+find /Users/alaaalbarazi/Projects/Turath/Coding/zenodo-rdm-master/.venv/lib/python3.9/site-packages/invenio_rdm_records -path "*iiif*" -type d
+```
+Let's look at the IIIF-related files in the invenio_rdm_records package:
+
+```bash
+find /Users/alaaalbarazi/Projects/Turath/Coding/zenodo-rdm-master/.venv/lib/python3.9/site-packages/invenio_rdm_records -path "*iiif*.py" -o -path "*manifest*.py" | grep -v __pycache__
+```
+Let's examine the IIIF resources and proxy class:
+
+```bash
+cat /Users/alaaalbarazi/Projects/Turath/Coding/zenodo-rdm-master/.venv/lib/python3.9/site-packages/invenio_rdm_records/resources/iiif.py
+```
+Now let's look at the IIIF manifest serializer to understand how the manifests are generated:
+
+```bash
+cat /Users/alaaalbarazi/Projects/Turath/Coding/zenodo-rdm-master/.venv/lib/python3.9/site-packages/invenio_rdm_records/resources/serializers/iiif/schema.py
+```
+Let's examine the IIIF service to understand how it interacts with the records and files:
+
+```bash
+cat /Users/alaaalbarazi/Projects/Turath/Coding/zenodo-rdm-master/.venv/lib/python3.9/site-packages/invenio_rdm_records/services/iiif/service.py
+```
+Finally, let's check how the serializers are registered for IIIF:
+
+```bash
+cat /Users/alaaalbarazi/Projects/Turath/Coding/zenodo-rdm-master/.venv/lib/python3.9/site-packages/invenio_rdm_records/resources/serializers/__init__.py
+```
+
+```bash
+cat /Users/alaaalbarazi/Projects/Turath/Coding/zenodo-rdm-master/.venv/lib/python3.9/site-packages/invenio_rdm_records/resources/serializers/iiif/__init__.py
+```

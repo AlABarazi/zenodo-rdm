@@ -61,4 +61,16 @@ def test_manifest_endpoint():
     assert "@id" in service, "Service missing @id field"
     assert "profile" in service, "Service missing profile field"
     
-    print(f"Successfully validated manifest for record {RECORD_ID}") 
+    print(f"Successfully validated manifest for record {RECORD_ID}")
+
+# Run the test when script is executed directly
+if __name__ == "__main__":
+    print(f"Testing IIIF manifest for record ID: {RECORD_ID}")
+    print(f"Using base URL: {BASE_URL}")
+    try:
+        test_manifest_endpoint()
+        print("✅ All tests passed!")
+    except AssertionError as e:
+        print(f"❌ Test failed: {e}")
+    except Exception as e:
+        print(f"❌ Error during test: {e}") 

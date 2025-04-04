@@ -342,3 +342,52 @@ To test the full viewing experience:
 The IIIF manifest generation in Zenodo-RDM is a sophisticated system that transforms record and file metadata into standardized IIIF structures. By understanding the components and processes involved, you can effectively test, troubleshoot, and extend the IIIF capabilities of the system.
 
 This system builds upon the PTIF conversion process and IIPServer components we've previously explored, forming a complete pipeline from image upload to interactive viewing in the Mirador interface. 
+
+
+## Understanding IIIF Manifest Generation in Zenodo-RDM
+
+The IIIF manifest generation in Zenodo-RDM is handled through a well-structured system involving several components:
+
+1. **IIIF Resource and Routes**: The system defines API endpoints that follow the IIIF Presentation API specification. These routes handle manifest, sequence, canvas, and image API requests.
+
+2. **Schema-based Serialization**: The manifest structure is defined using Marshmallow schemas, which map record and file data to the IIIF JSON-LD format.
+
+3. **Proxy Mechanism**: There's a proxy mechanism that redirects certain IIIF requests (like image tiles) to the IIPServer for efficient image serving.
+
+4. **Integration with Record and File Services**: The IIIF service interacts with the record and file services to access the necessary data.
+
+Now, I'm going to explain how I plan to approach testing the IIIF manifest generation:
+
+## Testing Plan for IIIF Manifest Generation
+
+I'll create a comprehensive testing approach that builds on our previous work with the IIPServer component:
+
+1. **First, I'll verify prerequisites**:
+   - Confirm we have a record with image files
+   - Ensure that PTIF conversion has successfully completed
+
+2. **Then, I'll test the manifest generation**:
+   - Request the IIIF manifest JSON for a record
+   - Analyze the structure to ensure it conforms to the IIIF specification
+   - Verify that all expected canvases are present
+   - Check that image URLs are correctly formed
+
+3. **Next, I'll test individual components**:
+   - Test canvas endpoints for individual files
+   - Test sequence endpoints
+   - Verify image info endpoints
+
+4. **Finally, I'll demonstrate integration with the Mirador viewer**:
+   - Show how the generated manifest is consumed by Mirador
+   - Test the end-to-end viewing experience
+
+This approach will enable us to systematically validate the manifest generation process while building on our understanding of the PTIF conversion and IIPServer components.
+
+## Implementation Steps
+
+1. I'll create a new document that explains the IIIF manifest generation process
+2. I'll develop step-by-step testing procedures
+3. I'll document common issues and solutions
+4. I'll create examples showing manifest structure and usage
+
+
