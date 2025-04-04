@@ -1,0 +1,95 @@
+services:
+  cache:
+    extends:
+      file: docker-services.yml
+      service: cache
+    ports:
+      - "6379:6379"
+  db:
+    extends:
+      file: docker-services.yml
+      service: db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  pgbouncer:
+    extends:
+      file: docker-services.yml
+      service: pgbouncer
+    ports:
+      - "6432:6432"
+  mq:
+    extends:
+      file: docker-services.yml
+      service: mq
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+  search:
+    extends:
+      file: docker-services.yml
+      service: search
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+  opensearch-dashboards:
+    extends:
+      file: docker-services.yml
+      service: opensearch-dashboards
+    ports:
+      - "5601:5601"
+  pgadmin:
+    extends:
+      file: docker-services.yml
+      service: pgadmin
+    ports:
+      - "5050:80"
+      - "5051:443"
+  iipserver:
+    extends:
+      file: docker-services.yml
+      service: iipserver
+    volumes:
+      - ${INSTANCE_PATH:-./data}/images:/images # Default path if INSTANCE_PATH not defined
+    ports:
+      - "8080:80"
+      - "9000:9000"
+  # Add worker service
+  worker:
+    image: iipsrv/iipsrv:latest  # Using IIPServer image since it might have necessary tools
+    volumes:
+      - ${INSTANCE_PATH:-./data}/images:/images # Same volume as IIPServer
+    command: |
+      /bin/sh -c "
+      # Install necessary tools
+      apt-get update && 
+      apt-get install -y libvips-tools python3 python3-pip &&
+      
+      # Create directory structure
+      mkdir -p /images/public /images/private &&
+      
+      # Simple watch loop to process images
+      while true; do
+        echo 'Checking for images to process...'
+        
+        # Process any PNG or JPG files in data directory to PTIF
+        find /images -name '*.png' -o -name '*.jpg' -o -name '*.tif' | while read img; do
+          # Skip if already processed
+          ptif_file=\"\${img%.*}.ptif\"
+          if [ ! -f \"\$ptif_file\" ]; then
+            echo \"Converting \$img to \$ptif_file\"
+            if command -v vips >/dev/null 2>&1; then
+              vips tiffsave \"\$img\" \"\$ptif_file\" --tile --pyramid || echo \"Failed to convert \$img\"
+            else
+              echo \"vips not available, skipping conversion\"
+            fi
+          fi
+        done
+        
+        sleep 30
+      done
+      "
+
+volumes:
+  postgres_data: 
