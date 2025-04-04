@@ -1,0 +1,1 @@
+"""IIIF manifest generation tests for Zenodo-RDM.""" 
