@@ -18,7 +18,14 @@ When deploying Zenodo-RDM locally, we encountered an issue with the IIIF functio
 └───────────────┘     └───────────────┘     └───────────────┘
 ```
 
-## The Solution: Manual PTIF Conversion
+## Solution Options
+
+We have two approaches to solve this issue:
+
+1. **Custom PTIF Conversion** - A standalone solution that doesn't modify Zenodo-RDM's codebase
+2. **Zenodo's Built-in Tools** - Utilizing Zenodo-RDM's existing PTIF conversion functionality
+
+## Option 1: Custom PTIF Conversion
 
 Without modifying the core Zenodo-RDM codebase, we implemented a solution to manually convert images to PTIF format:
 
@@ -30,9 +37,9 @@ Without modifying the core Zenodo-RDM codebase, we implemented a solution to man
 └───────────────┘     └───────────────┘     └───────────────┘
 ```
 
-## Implementation Steps
+### Implementation Steps
 
-### Step 1: Create a Conversion Script
+#### Step 1: Create a Conversion Script
 
 We created a shell script (`convert_images.sh`) that uses the `vips` tool to convert image files to PTIF format:
 
@@ -79,13 +86,13 @@ echo "Test a PTIF file with:"
 echo "  curl \"http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/path/to/image.ptif/info.json\""
 ```
 
-### Step 2: Make the Script Executable
+#### Step 2: Make the Script Executable
 
 ```bash
 chmod +x convert_images.sh
 ```
 
-### Step 3: Install Prerequisites
+#### Step 3: Install Prerequisites
 
 The script requires `vips` to be installed on your local system:
 
@@ -97,236 +104,195 @@ brew install vips
 sudo apt-get install -y libvips-tools
 ```
 
-### Step 4: Run the Conversion Script
+#### Step 4: Run the Conversion Script
 
 ```bash
 ./convert_images.sh
 ```
 
-This will:
-1. Find all image files in the `./data/images` directory
-2. Convert them to PTIF format with the same basename but `.ptif` extension
-3. Skip files that have already been converted
-
-Example output:
-```
-Searching for image files in ./data/images...
-Converting ./data/images/test_image.png to ./data/images/test_image.ptif
-Skipping already converted: ./data/images/public/10/0_/_/test_image.png
-Conversion complete
-```
-
-### Step 5: Copy PTIF Files to the Public Directory
-
-The IIPServer is configured to serve files from the `/images/public` directory, so we need to copy our PTIF files there:
+#### Step 5: Copy PTIF Files to the Public Directory
 
 ```bash
 cp data/images/*.ptif data/images/public/
 ```
 
-### Step 6: Verify Files in the IIPServer Container
+#### Step 6: Verify Files in the IIPServer Container
 
 ```bash
 docker-compose exec iipserver ls -la /images/public/
 ```
 
-Expected output:
-```
-total 10888
-drwxr-xr-x    4 root     root           128 Apr  3 21:09 .
-drwxr-xr-x    4 root     root           128 Apr  3 19:16 ..
-drwxr-xr-x    3 root     root            96 Apr  3 19:12 10
--rw-r--r--    1 root     root            20 Apr  3 21:09 test.txt
--rw-r--r--    1 root     root      11142744 Apr  4 23:53 test_image.ptif
-```
-
-### Step 7: Test IIIF Functionality
-
-Test accessing the PTIF file via the IIIF protocol:
+#### Step 7: Test IIIF Functionality
 
 ```bash
 curl "http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif/info.json"
 ```
 
-Expected output (IIIF image information in JSON format):
-```json
-{
-  "@context" : "http://iiif.io/api/image/3/context.json",
-  "protocol" : "http://iiif.io/api/image",
-  "width" : 1000,
-  "height" : 1000,
-  "sizes" : [
-     { "width" : 125, "height" : 125 },
-     { "width" : 250, "height" : 250 },
-     { "width" : 500, "height" : 500 }
-  ],
-  "tiles" : [
-     { "width" : 128, "height" : 128, "scaleFactors" : [ 1, 2, 4, 8 ] }
-  ],
-  "id" : "http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif",
-  "type": "ImageService3",
-  "profile" : "level2"
-  // ... more image information ...
-}
+## Option 2: Using Zenodo's Built-in PTIF Conversion Tools
+
+After our initial solution, we discovered that Zenodo-RDM already includes functionality for PTIF conversion. This is a more integrated approach that leverages the existing codebase.
+
+### Zenodo's PTIF Conversion Process
+
+Zenodo-RDM uses a class called `TilesProcessor` to generate IIIF tiles (PTIF files) for records. The `scripts/generate_iiif_tiles.py` script demonstrates how to use this functionality:
+
+```python
+"""Generate IIIF tiles for a list of records."""
+from invenio_rdm_records.proxies import current_rdm_records_service as service
+from invenio_rdm_records.records.processors.tiles import TilesProcessor
+from invenio_records_resources.services.files.processors.image import ImageMetadataExtractor
+from invenio_records_resources.services.uow import UnitOfWork, RecordCommitOp
+import sys
+import csv
+
+
+image_metadata_extractor = ImageMetadataExtractor()
+
+def generate_iiif_tiles(recid):
+    with UnitOfWork() as uow:
+        record = service.record_cls.pid.resolve(recid)
+        processor = TilesProcessor()
+        # Call the processor on the record
+        processor(None, record, uow=uow)
+        uow.register(RecordCommitOp(record))
+
+        # Calculate image dimensions for each supported image file
+        for file_record in record.files.values():
+            if image_metadata_extractor.can_process(file_record):
+                image_metadata_extractor.process(file_record)
+                file_record.commit()
+        uow.commit()
 ```
 
-### Step 8: Test Requesting an Image
+### Using the Built-in Tools
 
-Test requesting a thumbnail image:
+To use Zenodo's built-in PTIF conversion:
 
-```bash
-curl -s "http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif/full/200,/0/default.jpg" -o test_thumbnail.jpg
-```
+#### Step 1: Create a Simple Script to Process Existing Records
 
-This will save a 200px wide JPEG thumbnail of the image to `test_thumbnail.jpg`.
+Create a file called `convert_existing_records.py`:
 
-## Automated Solution with Docker
+```python
+#!/usr/bin/env python3
+"""
+Script to convert existing records' images to PTIF format for IIIF support.
+"""
 
-For a more automated solution, we can create a custom Docker container that continuously monitors and converts images:
+import sys
+import os
+from invenio_rdm_records.proxies import current_rdm_records_service as service
+from invenio_rdm_records.records.processors.tiles import TilesProcessor
+from invenio_records_resources.services.files.processors.image import ImageMetadataExtractor
+from invenio_records_resources.services.uow import UnitOfWork, RecordCommitOp
 
-### Step 1: Create a Dockerfile for the Converter
-
-Create `Dockerfile.converter`:
-
-```dockerfile
-FROM debian:bullseye-slim
-
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    libvips-tools \
-    python3 \
-    python3-pip \
-    curl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create necessary directories
-RUN mkdir -p /images/public /images/private
-
-# Copy the watcher script
-COPY converter-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/converter-entrypoint.sh
-
-WORKDIR /images
-ENTRYPOINT ["/usr/local/bin/converter-entrypoint.sh"]
-```
-
-### Step 2: Create an Entrypoint Script
-
-Create `converter-entrypoint.sh`:
-
-```bash
-#!/bin/bash
-# PTIF Converter entrypoint
-# Watches for image files and converts them to PTIF format
-
-set -e
-
-echo "Starting PTIF Converter service"
-echo "================================"
-echo "This container watches for image files and converts them to PTIF format"
-echo "It's a substitute for the Zenodo worker service during development"
-echo ""
-
-# Ensure directories exist
-mkdir -p /images/public /images/private
-
-# Function to convert image to PTIF
-convert_to_ptif() {
-    local img="$1"
-    local ptif_file="${img%.*}.ptif"
+def generate_iiif_tiles(recid):
+    """Generate IIIF tiles for a record."""
+    print(f"Processing record {recid}...")
     
-    # Skip if already converted
-    if [ -f "$ptif_file" ]; then
-        echo "$(date): Skipping already converted: $img"
-        return 0
-    fi
-    
-    echo "$(date): Converting $img to $ptif_file"
-    if vips tiffsave "$img" "$ptif_file" --tile --pyramid; then
-        echo "$(date): ✓ Successfully converted $img to $ptif_file"
-        return 0
-    else
-        echo "$(date): ✗ Failed to convert $img"
-        return 1
-    fi
-}
+    with UnitOfWork() as uow:
+        try:
+            record = service.record_cls.pid.resolve(recid)
+            processor = TilesProcessor()
+            # Call the processor on the record
+            processor(None, record, uow=uow)
+            uow.register(RecordCommitOp(record))
 
-# Initial conversion of existing files
-echo "Scanning for existing image files..."
-find /images -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.tif" -o -name "*.tiff" \) | while read img; do
-    convert_to_ptif "$img"
-done
-
-# Main loop to watch for new files
-echo "$(date): Watching for new image files..."
-while true; do
-    # Check public directory
-    find /images/public -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.tif" -o -name "*.tiff" \) -not -path "*.ptif" | while read img; do
-        if [ ! -f "${img%.*}.ptif" ]; then
-            convert_to_ptif "$img"
-        fi
-    done
-    
-    # Check private directories (record-specific)
-    find /images/private -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.tif" -o -name "*.tiff" \) -not -path "*.ptif" | while read img; do
-        if [ ! -f "${img%.*}.ptif" ]; then
-            convert_to_ptif "$img"
+            # Calculate image dimensions for each supported image file
+            image_metadata_extractor = ImageMetadataExtractor()
+            for file_record in record.files.values():
+                if image_metadata_extractor.can_process(file_record):
+                    image_metadata_extractor.process(file_record)
+                    file_record.commit()
             
-            # For record directories, also create a symlink to public
-            # This helps with testing, but in a real system this would
-            # respect access controls
-            dir=$(dirname "$img")
-            record_id=$(basename "$dir")
-            mkdir -p "/images/public/$record_id"
-            ptif_file="${img%.*}.ptif"
-            ln -sf "$ptif_file" "/images/public/$record_id/$(basename "$ptif_file")" 2>/dev/null || true
-        fi
-    done
+            uow.commit()
+            print(f"✓ Successfully processed record {recid}")
+            return True
+        except Exception as e:
+            print(f"✗ Error processing record {recid}: {e}")
+            return False
+
+def process_records(record_ids):
+    """Process a list of record IDs."""
+    success = 0
+    failure = 0
     
-    # Wait before checking again
-    sleep 5
-done
+    for recid in record_ids:
+        if generate_iiif_tiles(recid):
+            success += 1
+        else:
+            failure += 1
+    
+    print(f"\nProcessing complete: {success} successful, {failure} failed")
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        # Process records specified as command-line arguments
+        record_ids = sys.argv[1:]
+        process_records(record_ids)
+    else:
+        print("Usage: python convert_existing_records.py RECORD_ID [RECORD_ID...]")
+        print("Example: python convert_existing_records.py 1234 5678")
+        sys.exit(1)
 ```
 
-### Step 3: Make the Entrypoint Script Executable
+#### Step 2: Run the Script for Specific Records
 
 ```bash
-chmod +x converter-entrypoint.sh
+cd site
+python convert_existing_records.py 123 456 789
 ```
 
-### Step 4: Build the Docker Image
+Replace `123 456 789` with the actual record IDs you want to process.
 
-```bash
-docker build -f Dockerfile.converter -t ptif-converter .
+#### Step 3: Configure Automatic Processing for New Records
+
+To ensure that new uploads are automatically processed:
+
+1. Make sure the worker service is running in your docker-compose configuration
+2. Check that the `IIIF_PREVIEW_ENABLED` setting is enabled in your `invenio.cfg`:
+
+```python
+# Enable IIIF preview
+IIIF_PREVIEW_ENABLED = True
 ```
 
-### Step 5: Add the Converter to Docker Compose
+3. Ensure proper file storage class mappings:
 
-Edit `docker-compose.yml` to add:
-
-```yaml
-services:
-  # ... existing services ...
-  
-  converter:
-    image: ptif-converter
-    volumes:
-      - ${INSTANCE_PATH:-./data}/images:/images
-    restart: always
+```python
+FILES_REST_STORAGE_CLASS_MAPPING = {
+    'L': 'local',
+    'F': 'iiif',
+}
 ```
 
-### Step 6: Start the Converter Service
+### Advantages of Using Built-in Tools
 
-```bash
-docker-compose up -d converter
+1. **Integration**: Uses the same codebase as Zenodo-RDM
+2. **Automatic Processing**: Can be configured to run automatically for new uploads
+3. **Metadata Extraction**: Extracts image metadata for better IIIF support
+4. **Consistency**: Ensures consistent PTIF generation as used in production Zenodo
+
+## IIIF URL Structure
+
+The IIIF Image API uses a standardized URL pattern for requesting images:
+
+```
+http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/[image-path]/[region]/[size]/[rotation]/[quality].[format]
 ```
 
-The converter service will now:
-1. Run continuously in the background
-2. Automatically convert any new image files to PTIF format
-3. Make the PTIF files available to the IIPServer
+Examples:
+- Full image (as JSON info): 
+  ```
+  http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif/info.json
+  ```
+- 200px wide thumbnail: 
+  ```
+  http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif/full/200,/0/default.jpg
+  ```
+- Region of the image (100,100 with width 200, height 200): 
+  ```
+  http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif/100,100,200,200/full/0/default.jpg
+  ```
 
 ## Common Challenges and Solutions
 
@@ -384,53 +350,12 @@ sudo apt-get install -y libvips-tools
    docker-compose cp data/images/test_image.ptif iipserver:/images/public/
    ```
 
-## How PTIF and IIIF Work Together
-
-PTIF (Pyramid TIFF) is a tiled, multi-resolution format that enables efficient access to image data at different resolutions. IIPServer reads these files and serves them via the IIIF protocol, which provides a standardized way to request images or portions of images at specific sizes.
-
-```
-┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│               │     │               │     │               │
-│  Original     │────>│  PTIF         │────>│  IIPServer    │
-│  Image        │     │  Conversion   │     │  IIIF Service │
-│  (.jpg, .png) │     │  (.ptif)      │     │               │
-└───────────────┘     └───────────────┘     └───────────────┘
-                                                   │
-                                                   ▼
-┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│               │     │               │     │               │
-│  Web Browser  │<────│  Mirador      │<────│  IIIF Image   │
-│  Display      │     │  Viewer       │     │  API Requests │
-│               │     │               │     │               │
-└───────────────┘     └───────────────┘     └───────────────┘
-```
-
-## IIIF URL Structure
-
-The IIIF Image API uses a standardized URL pattern for requesting images:
-
-```
-http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/[image-path]/[region]/[size]/[rotation]/[quality].[format]
-```
-
-Examples:
-- Full image (as JSON info): 
-  ```
-  http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif/info.json
-  ```
-- 200px wide thumbnail: 
-  ```
-  http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif/full/200,/0/default.jpg
-  ```
-- Region of the image (100,100 with width 200, height 200): 
-  ```
-  http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/test_image.ptif/100,100,200,200/full/0/default.jpg
-  ```
-
 ## Conclusion
 
 By implementing PTIF conversion, we've enabled the IIPServer to serve images via the IIIF protocol, which is essential for viewing images in IIIF-compatible viewers like Mirador.
 
-In a full Zenodo-RDM deployment, this conversion would be handled by the worker service, but our manual solution provides the same functionality for testing and development purposes.
+Zenodo-RDM provides built-in tools for PTIF conversion, which is the preferred approach for a production environment. However, our custom solution can be useful for testing and development when you don't want to modify the core codebase.
 
-Remember to run the conversion script whenever you add new images, or set up the automated converter service for continuous conversion. 
+Choose the approach that best fits your needs:
+- **Custom Solution**: Simple, standalone, no code changes required
+- **Built-in Tools**: Integrated, consistent with Zenodo's codebase 
