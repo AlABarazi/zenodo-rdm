@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IIIF Image Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/openseadragon@3.1.0/build/openseadragon/openseadragon.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .viewer-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .thumbnail-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .thumbnail {
+            width: 150px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            transition: transform 0.2s;
+        }
+        .thumbnail:hover {
+            transform: scale(1.05);
+            border-color: #4CAF50;
+        }
+        .info-panel {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IIIF Image Viewer</h1>
+        
+        <div class="form-group">
+            <label for="record-id">Record ID:</label>
+            <input type="text" id="record-id" value="202">
+        </div>
+        
+        <div class="form-group">
+            <label for="image-filename">Image Filename (without extension):</label>
+            <input type="text" id="image-filename" value="page-001">
+        </div>
+        
+        <button id="load-image">Load Image</button>
+        
+        <div id="viewer" class="viewer-container"></div>
+        
+        <div class="info-panel">
+            <h3>Image Information</h3>
+            <pre id="image-info">Loading...</pre>
+        </div>
+        
+        <h3>Thumbnails for Record 202</h3>
+        <div class="thumbnail-grid" id="thumbnails">
+            <p>Loading thumbnails...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/openseadragon@3.1.0/build/openseadragon/openseadragon.min.js"></script>
+    <script>
+        // Initialize the viewer
+        let viewer = OpenSeadragon({
+            id: "viewer",
+            prefixUrl: "https://cdn.jsdelivr.net/npm/openseadragon@3.1.0/build/openseadragon/images/",
+            preserveViewport: true,
+            visibilityRatio: 1,
+            minZoomLevel: 1,
+            defaultZoomLevel: 1,
+            sequenceMode: false,
+            tileSources: []
+        });
+        
+        // Function to load an image using IIIF
+        function loadImage(recordId, filename) {
+            const infoUrl = `http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/private_${recordId}_${filename}.ptif/info.json`;
+            
+            // Update the viewer
+            viewer.open(infoUrl);
+            
+            // Fetch and display image info
+            fetch(infoUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('image-info').textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    document.getElementById('image-info').textContent = `Error loading image info: ${error.message}`;
+                });
+        }
+        
+        // Event listener for the load button
+        document.getElementById('load-image').addEventListener('click', function() {
+            const recordId = document.getElementById('record-id').value;
+            const filename = document.getElementById('image-filename').value;
+            loadImage(recordId, filename);
+        });
+        
+        // Function to load thumbnails for a record
+        function loadThumbnails(recordId) {
+            const thumbnailContainer = document.getElementById('thumbnails');
+            thumbnailContainer.innerHTML = '';
+            
+            // List of page numbers for record 202 (hardcoded for demo)
+            const pages = Array.from({length: 28}, (_, i) => i + 1).map(num => 
+                String(num).padStart(3, '0')
+            );
+            
+            pages.forEach(page => {
+                const thumbnailUrl = `http://localhost:8080/fcgi-bin/iipsrv.fcgi?IIIF=/private_${recordId}_page-${page}.ptif/full/150,/0/default.jpg`;
+                const img = document.createElement('img');
+                img.src = thumbnailUrl;
+                img.alt = `Page ${page}`;
+                img.className = 'thumbnail';
+                img.onclick = function() {
+                    document.getElementById('image-filename').value = `page-${page}`;
+                    loadImage(recordId, `page-${page}`);
+                };
+                thumbnailContainer.appendChild(img);
+            });
+        }
+        
+        // Load initial image and thumbnails when page loads
+        window.onload = function() {
+            const recordId = document.getElementById('record-id').value;
+            const filename = document.getElementById('image-filename').value;
+            loadImage(recordId, filename);
+            loadThumbnails(recordId);
+        };
+    </script>
+</body>
+</html> 
